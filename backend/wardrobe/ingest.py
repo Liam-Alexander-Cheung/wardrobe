@@ -15,7 +15,7 @@ import io
 from pathlib import Path
 from typing import Callable, Optional
 
-from PIL import Image, ImageOps, UnidentifiedImageError
+from PIL import Image, ImageCms, ImageOps, UnidentifiedImageError
 
 try:  # iPhone photos arrive as HEIC via AirDrop unless "Most Compatible" is set
     import pillow_heif
@@ -28,6 +28,13 @@ MAX_CUTOUT = 1000
 THUMB = 400
 MAX_BYTES = 30 * 1024 * 1024
 KINDS = ("originals", "cutouts", "thumbs")
+
+# Colour: iPhones shoot in Display P3, a wider colour space than the sRGB browsers assume
+# for unlabelled images. We convert to sRGB using the photo's own profile BEFORE stripping
+# metadata, then label every saved file as sRGB. (Stripping the profile without converting
+# made navy look slate-grey: 2026-11-08.)
+SRGB = ImageCms.createProfile("sRGB")
+SRGB_ICC = ImageCms.ImageCmsProfile(SRGB).tobytes()
 
 Remover = Callable[[Image.Image], Image.Image]
 _session = None
@@ -46,6 +53,17 @@ def rembg_remover(img: Image.Image) -> Image.Image:
     return remove(img, session=_session, post_process_mask=True)
 
 
+def to_srgb(img: Image.Image, icc: Optional[bytes]) -> Image.Image:
+    """Convert RGB pixels from the given ICC profile to sRGB. No profile: assume sRGB."""
+    if not icc:
+        return img
+    try:
+        return ImageCms.profileToProfile(img, ImageCms.ImageCmsProfile(io.BytesIO(icc)), SRGB,
+                                         outputMode="RGB")
+    except (ImageCms.PyCMSError, OSError, ValueError):
+        return img                                       # unreadable profile: keep as is
+
+
 def _clean(img: Image.Image) -> Image.Image:
     """Copy only the pixels into a fresh image, so no EXIF/GPS/XMP can survive."""
     return Image.frombytes(img.mode, img.size, img.tobytes())
@@ -60,7 +78,9 @@ def process(data: bytes, item_id: str, root: Path, remover: Optional[Remover] = 
     except (UnidentifiedImageError, OSError) as e:
         raise NotAnImage("not a readable image") from e
 
+    icc = img.info.get("icc_profile")
     img = ImageOps.exif_transpose(img).convert("RGB")   # apply phone rotation, then forget EXIF
+    img = to_srgb(img, icc)
     img.thumbnail((MAX_ORIGINAL, MAX_ORIGINAL))
     img = _clean(img)
 
@@ -80,9 +100,9 @@ def process(data: bytes, item_id: str, root: Path, remover: Optional[Remover] = 
     }
     for p in paths.values():
         p.parent.mkdir(parents=True, exist_ok=True)
-    img.save(paths["original"], "JPEG", quality=88)
-    cut.save(paths["cutout"], "PNG", optimize=True)
-    thumb.save(paths["thumb"], "WEBP", quality=85)
+    img.save(paths["original"], "JPEG", quality=88, icc_profile=SRGB_ICC)
+    cut.save(paths["cutout"], "PNG", optimize=True, icc_profile=SRGB_ICC)
+    thumb.save(paths["thumb"], "WEBP", quality=85, icc_profile=SRGB_ICC)
     return paths
 
 

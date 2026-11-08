@@ -42,7 +42,7 @@ flowchart LR
 
 | Part | File | What it does |
 |------|------|--------------|
-| Ingest | `backend/wardrobe/ingest.py` | Rotates the photo upright, **removes all metadata (incl. GPS)**, cuts the garment out with [rembg](https://github.com/danielgatis/rembg) running locally, crops tight, makes a 400 px thumbnail |
+| Ingest | `backend/wardrobe/ingest.py` | Rotates the photo upright, converts its colours to sRGB (iPhones shoot Display P3), **removes all metadata (incl. GPS)** apart from a generic sRGB colour label, cuts the garment out with [rembg](https://github.com/danielgatis/rembg) running locally, crops tight, makes a 400 px thumbnail |
 | Store | `backend/wardrobe/db.py` | One SQLite file; the web API and the MCP server share it, so there's exactly one place that knows the schema |
 | API | `backend/wardrobe/app.py` | Items + outfits CRUD, image serving, the Ask endpoint |
 | Guard | `backend/wardrobe/guard.py` | Binds to 127.0.0.1 and checks `Host`/`Origin`, so other websites in your browser can't call the API (CSRF, DNS rebinding) |

@@ -1,7 +1,9 @@
 import io
 
 import pytest
-from PIL import Image
+from pathlib import Path
+
+from PIL import Image, ImageCms
 
 from conftest import fake_remover, make_photo
 from wardrobe import ingest
@@ -52,3 +54,61 @@ def test_png_input_works(tmp_path):
 def test_real_rembg_cutout(tmp_path):
     out = ingest.process(make_photo(), "abc", tmp_path)       # default remover = rembg
     assert Image.open(out["cutout"]).mode == "RGBA"
+
+
+# --- colour: iPhone photos are Display P3; browsers assume sRGB for untagged images ---
+
+P3 = Path("/System/Library/ColorSync/Profiles/Display P3.icc")
+needs_p3 = pytest.mark.skipif(not P3.exists(), reason="needs the macOS Display P3 profile")
+SHIRT = (180, 60, 60)
+
+
+def p3_photo() -> bytes:
+    img = Image.new("RGB", (800, 600), (128, 128, 128))
+    img.paste(SHIRT, (200, 150, 600, 450))
+    buf = io.BytesIO()
+    img.save(buf, "JPEG", quality=98, icc_profile=P3.read_bytes())
+    return buf.getvalue()
+
+
+def p3_to_srgb(rgb):
+    src = ImageCms.ImageCmsProfile(io.BytesIO(P3.read_bytes()))
+    return ImageCms.profileToProfile(Image.new("RGB", (1, 1), rgb), src,
+                                     ImageCms.createProfile("sRGB")).getpixel((0, 0))
+
+
+def close(a, b, tol=4):
+    return all(abs(x - y) <= tol for x, y in zip(a, b))
+
+
+@needs_p3
+def test_display_p3_photo_is_converted_to_srgb(tmp_path):
+    out = ingest.process(p3_photo(), "abc", tmp_path, remover=fake_remover)
+    expected = p3_to_srgb(SHIRT)
+    assert not close(expected, SHIRT)                       # the test colour really shifts
+    original = Image.open(out["original"])
+    assert close(original.getpixel((400, 300)), expected)
+    cut = Image.open(out["cutout"])
+    assert close(cut.getpixel((cut.width // 2, cut.height // 2))[:3], expected)
+
+
+@needs_p3
+def test_saved_images_are_labelled_srgb(tmp_path):
+    out = ingest.process(p3_photo(), "abc", tmp_path, remover=fake_remover)
+    for kind in ("original", "cutout"):
+        icc = Image.open(out[kind]).info.get("icc_profile")
+        assert icc, kind
+        assert "sRGB" in ImageCms.getProfileDescription(ImageCms.ImageCmsProfile(io.BytesIO(icc))), kind
+
+
+def test_untagged_photo_keeps_its_colours(tmp_path):
+    out = ingest.process(make_photo(color=SHIRT, gps=False), "abc", tmp_path, remover=fake_remover)
+    assert close(Image.open(out["original"]).getpixel((600, 450)), SHIRT)
+
+
+def test_srgb_reinterpretation_for_old_items(tmp_path):
+    """Repair helper: pixels that were P3 but stored without a label get converted."""
+    if not P3.exists():
+        pytest.skip("needs the macOS Display P3 profile")
+    img = Image.new("RGB", (4, 4), SHIRT)
+    assert close(ingest.to_srgb(img, P3.read_bytes()).getpixel((0, 0)), p3_to_srgb(SHIRT))
