@@ -90,6 +90,9 @@ button { cursor: pointer; }
 .actions .danger { margin-right: auto; color: var(--accent); border-color: transparent; }
 .error { color: var(--accent); }
 
+.demo-note { margin: -8px 0 16px; padding: 8px 12px; border-radius: 8px; background: var(--tile);
+  color: var(--muted); font-size: 13px; }
+
 /* ---- tabs ---- */
 .tabs { display: flex; gap: 22px; margin-left: 36px; margin-right: auto; }
 .tabs button { all: unset; cursor: pointer; font: 400 17px var(--serif); color: var(--muted);

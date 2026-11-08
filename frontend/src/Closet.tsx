@@ -15,6 +15,14 @@ export function filterItems(items: Item[], filter: Filter, query: string): Item[
     (!q || [i.name, i.notes, ...i.colors, ...i.tags].some((s) => s.toLowerCase().includes(q))));
 }
 
+// Fashion colour words that aren't CSS colours (CSS knows navy, beige, khaki… already).
+const SWATCH: Record<string, string> = {
+  camel: "#c19a6b", cream: "#f3ead3", oyster: "#e8e2d4", ecru: "#e7dfc6", charcoal: "#36454f",
+  stone: "#b8ad9a", denim: "#4a6890", burgundy: "#800020", rust: "#b7410e", mustard: "#d4a017",
+  sage: "#9caf88", taupe: "#8b7d6b", mint: "#aaf0d1", "off-white": "#f4f1ea", multi: "conic-gradient(red, gold, teal, red)",
+};
+export const swatch = (c: string) => SWATCH[c.toLowerCase()] ?? c;
+
 interface Progress { done: number; total: number; failed: number; current: string }
 
 interface Props { items: Item[]; setItems: Dispatch<SetStateAction<Item[]>> }
@@ -91,7 +99,7 @@ export default function Closet({ items, setItems }: Props) {
                 <span className="tile"><img src={i.images.thumb} alt="" loading="lazy" /></span>
                 <span className="label">{i.name || <em>Untitled</em>}</span>
                 <span className="dots">
-                  {i.colors.map((c) => <i key={c} style={{ background: c }} title={c} />)}
+                  {i.colors.map((c) => <i key={c} style={{ background: swatch(c) }} title={c} />)}
                 </span>
               </button>
             </li>
