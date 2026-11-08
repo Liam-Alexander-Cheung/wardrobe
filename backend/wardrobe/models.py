@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 Category = Literal["top", "bottom", "outerwear", "shoes", "accessory", "fullbody"]
 Season = Literal["spring", "summer", "autumn", "winter"]
@@ -23,6 +23,45 @@ class ItemUpdate(BaseModel):
     tags: Optional[list[str]] = Field(None, max_length=20)
     notes: Optional[str] = Field(None, max_length=500)
     last_worn: Optional[str] = None                           # YYYY-MM-DD
+
+
+class OutfitItemIn(BaseModel):
+    """One garment placed on the flat-lay canvas. x/y are its centre, 0..1 of the board."""
+    item_id: str
+    slot: Category
+    x: float = Field(0.5, ge=0, le=1)
+    y: float = Field(0.5, ge=0, le=1)
+    z: int = Field(0, ge=0, le=50)          # stacking order: higher = on top
+
+
+class OutfitIn(BaseModel):
+    name: str = Field(..., min_length=1, max_length=80)
+    occasion: str = Field("", max_length=80)
+    notes: str = Field("", max_length=1000)
+    items: list[OutfitItemIn] = Field(..., min_length=1, max_length=12)
+
+    @field_validator("items")
+    @classmethod
+    def no_duplicates(cls, items):
+        ids = [i.item_id for i in items]
+        if len(ids) != len(set(ids)):
+            raise ValueError("an item can only appear once per outfit")
+        return items
+
+
+class OutfitItem(OutfitItemIn):
+    name: str
+    images: dict[str, str]
+
+
+class Outfit(BaseModel):
+    id: str
+    name: str
+    occasion: str
+    notes: str
+    created_by: Literal["liam", "claude"]
+    created_at: str
+    items: list[OutfitItem]
 
 
 class Item(BaseModel):

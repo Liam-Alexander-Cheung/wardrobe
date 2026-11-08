@@ -78,10 +78,7 @@ class Store:
         d = dict(row)
         for f in LIST_FIELDS:
             d[f] = json.loads(d[f])
-        i = d["id"]
-        d["images"] = {"original": f"/media/originals/{i}.jpg",
-                       "cutout": f"/media/cutouts/{i}.png",
-                       "thumb": f"/media/thumbs/{i}.webp"}
+        d["images"] = Store._item_images(d["id"])
         return d
 
     def add_item(self, item_id: str, name: str = "") -> dict:
@@ -130,3 +127,67 @@ class Store:
     def count_items(self) -> int:
         with self.connect() as c:
             return c.execute("SELECT COUNT(*) FROM items").fetchone()[0]
+
+    # ---- outfits -----------------------------------------------------------------
+
+    class UnknownItem(ValueError):
+        pass
+
+    def _write_outfit_items(self, c: sqlite3.Connection, outfit_id: str, items: list[dict]) -> None:
+        ids = [i["item_id"] for i in items]
+        found = {r[0] for r in c.execute(
+            f"SELECT id FROM items WHERE id IN ({','.join('?' * len(ids))})", ids)}
+        missing = [i for i in ids if i not in found]
+        if missing:
+            raise Store.UnknownItem(f"unknown item(s): {', '.join(missing)}")
+        c.execute("DELETE FROM outfit_items WHERE outfit_id = ?", (outfit_id,))
+        c.executemany(
+            "INSERT INTO outfit_items (outfit_id, item_id, slot, x, y, z) VALUES (?, ?, ?, ?, ?, ?)",
+            [(outfit_id, i["item_id"], i["slot"], i["x"], i["y"], i["z"]) for i in items])
+
+    def create_outfit(self, name: str, items: list[dict], occasion: str = "", notes: str = "",
+                      created_by: str = "liam") -> dict:
+        outfit_id = new_id()
+        with self.connect() as c:   # one transaction: no half-saved outfit if an item is missing
+            c.execute("INSERT INTO outfits (id, name, occasion, notes, created_by, created_at) "
+                      "VALUES (?, ?, ?, ?, ?, ?)", (outfit_id, name, occasion, notes, created_by, now()))
+            self._write_outfit_items(c, outfit_id, items)
+        return self.get_outfit(outfit_id)
+
+    def update_outfit(self, outfit_id: str, name: str, items: list[dict], occasion: str = "",
+                      notes: str = "") -> Optional[dict]:
+        with self.connect() as c:
+            if not c.execute("UPDATE outfits SET name = ?, occasion = ?, notes = ? WHERE id = ?",
+                             (name, occasion, notes, outfit_id)).rowcount:
+                return None
+            self._write_outfit_items(c, outfit_id, items)
+        return self.get_outfit(outfit_id)
+
+    def _outfit(self, c: sqlite3.Connection, row: sqlite3.Row) -> dict:
+        d = dict(row)
+        rows = c.execute("SELECT oi.*, i.name FROM outfit_items oi JOIN items i ON i.id = oi.item_id "
+                         "WHERE oi.outfit_id = ? ORDER BY oi.z, oi.rowid", (d["id"],))
+        d["items"] = [{k: r[k] for k in ("item_id", "slot", "x", "y", "z", "name")}
+                      | {"images": self._item_images(r["item_id"])} for r in rows]
+        return d
+
+    @staticmethod
+    def _item_images(i: str) -> dict:
+        return {"original": f"/media/originals/{i}.jpg", "cutout": f"/media/cutouts/{i}.png",
+                "thumb": f"/media/thumbs/{i}.webp"}
+
+    def get_outfit(self, outfit_id: str) -> Optional[dict]:
+        with self.connect() as c:
+            row = c.execute("SELECT * FROM outfits WHERE id = ?", (outfit_id,)).fetchone()
+            return self._outfit(c, row) if row else None
+
+    def list_outfits(self, created_by: Optional[str] = None) -> list[dict]:
+        sql, args = "SELECT * FROM outfits", []
+        if created_by:
+            sql, args = sql + " WHERE created_by = ?", [created_by]
+        with self.connect() as c:
+            return [self._outfit(c, r) for r in c.execute(sql + " ORDER BY created_at DESC, rowid DESC", args)]
+
+    def delete_outfit(self, outfit_id: str) -> bool:
+        with self.connect() as c:
+            return c.execute("DELETE FROM outfits WHERE id = ?", (outfit_id,)).rowcount > 0

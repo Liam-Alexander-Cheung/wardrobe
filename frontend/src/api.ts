@@ -21,6 +21,15 @@ export interface Item {
 }
 export type ItemPatch = Partial<Omit<Item, "id" | "created_at" | "images">>;
 
+export interface Placement { item_id: string; slot: Category; x: number; y: number; z: number }
+export interface OutfitIn { name: string; occasion: string; notes: string; items: Placement[] }
+export interface Outfit extends OutfitIn {
+  id: string;
+  created_by: "liam" | "claude";
+  created_at: string;
+  items: (Placement & { name: string; images: Item["images"] })[];
+}
+
 async function call<T>(url: string, init?: RequestInit): Promise<T> {
   const r = await fetch(url, init);
   if (!r.ok) {
@@ -44,4 +53,8 @@ export const api = {
   },
   updateItem: (id: string, patch: ItemPatch) => call<Item>(`/api/items/${id}`, json("PATCH", patch)),
   deleteItem: (id: string) => call<void>(`/api/items/${id}`, { method: "DELETE" }),
+  listOutfits: () => call<Outfit[]>("/api/outfits"),
+  createOutfit: (body: OutfitIn) => call<Outfit>("/api/outfits", json("POST", body)),
+  updateOutfit: (id: string, body: OutfitIn) => call<Outfit>(`/api/outfits/${id}`, json("PUT", body)),
+  deleteOutfit: (id: string) => call<void>(`/api/outfits/${id}`, { method: "DELETE" }),
 };
