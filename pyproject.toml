@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wardrobe"
+version = "0.1.0"
+description = "Local-first digital wardrobe with a Claude MCP server"
+requires-python = ">=3.11"
+
+[tool.setuptools]
+package-dir = {"" = "backend"}
+packages = ["wardrobe"]
+
+[tool.pytest.ini_options]
+pythonpath = ["backend"]
+testpaths = ["backend/tests"]
+markers = ["slow: runs the real rembg model (downloads ~170 MB on first run)"]
+addopts = "-m 'not slow'"

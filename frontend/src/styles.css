@@ -1,0 +1,97 @@
+/* Lookbook feel: warm paper, ink type, garments floating on soft tiles. System fonts only
+   (the CSP allows nothing from other servers, and the app must work offline). */
+:root {
+  --paper: #f6f2ea;
+  --tile: #ece6da;
+  --tile-hover: #e4dccd;
+  --ink: #1d1b18;
+  --muted: #7a7266;
+  --line: #d9d1c3;
+  --accent: #9c3d24;
+  --accent-ink: #fff8f2;
+  --panel: #fffdf8;
+  --shadow: 0 1px 2px rgb(40 30 10 / 0.06), 0 8px 24px rgb(40 30 10 / 0.08);
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --sans: -apple-system, BlinkMacSystemFont, "Helvetica Neue", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #171512; --tile: #221f1b; --tile-hover: #2b2722; --ink: #efe9df;
+    --muted: #9a9183; --line: #3a352e; --accent: #e07a55; --accent-ink: #1a0f0a;
+    --panel: #1e1b17; --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.35);
+  }
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.45 var(--sans); }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+
+.shell { max-width: 1240px; margin: 0 auto; padding: 28px 24px 80px; }
+.masthead { display: flex; align-items: baseline; justify-content: space-between;
+  border-bottom: 1px solid var(--ink); padding-bottom: 10px; margin-bottom: 18px; }
+.masthead h1 { font: 400 44px/1 var(--serif); letter-spacing: -0.02em; margin: 0; }
+.count { margin: 0; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin-bottom: 18px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 auto; }
+.chip { border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 5px 12px; }
+.chip span { color: var(--muted); font-size: 12px; margin-left: 2px; font-variant-numeric: tabular-nums; }
+.chip:hover { border-color: var(--ink); }
+.chip.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.chip.on span { color: inherit; opacity: 0.7; }
+.search { width: 220px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px;
+  background: var(--panel); }
+.add { background: var(--accent); color: var(--accent-ink); padding: 7px 16px; border-radius: 999px;
+  cursor: pointer; font-weight: 500; }
+.add:hover { filter: brightness(1.08); }
+
+.progress { margin: -6px 0 16px; color: var(--muted); font-size: 13px; }
+.closet { min-height: 60vh; border-radius: 16px; transition: outline-color 0.15s; outline: 2px dashed transparent;
+  outline-offset: 8px; }
+.closet.dragging { outline-color: var(--accent); }
+.empty { text-align: center; padding: 15vh 0; color: var(--muted); }
+.empty p:first-child { font: 400 28px var(--serif); color: var(--ink); margin-bottom: 4px; }
+
+.grid { list-style: none; padding: 0; margin: 0; display: grid; gap: 22px 18px;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+.card { all: unset; display: block; width: 100%; cursor: pointer; }
+.tile { display: block; position: relative; aspect-ratio: 4 / 5; background: var(--tile);
+  border-radius: 12px; transition: background 0.15s, transform 0.15s; }
+/* absolute + contain: a tall cutout (jeans) can't stretch the tile, it shrinks to fit */
+.tile img { position: absolute; inset: 12%; width: 76%; height: 76%; object-fit: contain;
+  filter: drop-shadow(0 6px 10px rgb(40 30 10 / 0.18)); }
+.card:hover .tile { background: var(--tile-hover); transform: translateY(-2px); }
+.card:focus-visible .tile { outline: 2px solid var(--accent); outline-offset: 2px; }
+.label { display: block; margin-top: 8px; font-size: 14px; }
+.label em { color: var(--muted); }
+.dots { display: flex; gap: 4px; margin-top: 4px; min-height: 10px; }
+.dots i { width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--line); }
+
+.scrim { position: fixed; inset: 0; background: rgb(20 15 10 / 0.35); display: flex; justify-content: flex-end;
+  z-index: 10; }
+.editor { width: min(440px, 100%); height: 100%; overflow-y: auto; background: var(--panel);
+  box-shadow: var(--shadow); padding: 22px; }
+.hero { display: grid; place-items: center; background: var(--tile); border-radius: 12px; height: 300px;
+  padding: 20px; margin-bottom: 18px; }
+.hero img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.editor form { display: grid; gap: 12px; }
+.editor label, .editor legend { display: grid; gap: 4px; font-size: 12px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.06em; }
+.editor input, .editor select, .editor textarea { text-transform: none; letter-spacing: 0; font-size: 15px;
+  color: var(--ink); padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+.editor fieldset { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.editor legend { margin-bottom: 4px; }
+.seg { border: 1px solid var(--line); background: transparent; border-radius: 8px; padding: 4px 10px; font-size: 13px; }
+.seg.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
+.actions button { border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 7px 16px; }
+.actions .primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.actions .danger { margin-right: auto; color: var(--accent); border-color: transparent; }
+.error { color: var(--accent); }
+
+@media (max-width: 600px) {
+  .masthead h1 { font-size: 34px; }
+  .search { width: 100%; }
+  .grid { grid-template-columns: repeat(2, 1fr); gap: 16px 12px; }
+}
