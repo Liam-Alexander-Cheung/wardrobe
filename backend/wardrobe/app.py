@@ -24,7 +24,7 @@ import re
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, File, HTTPException, Response, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, Response, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -145,11 +145,17 @@ def create_app(data_dir: Optional[Path] = None, remover=None, demo: bool = False
                                  headers={"cache-control": "no-cache"})
 
     @app.get("/media/{kind}/{name}")
-    def media(kind: str, name: str):
+    def media(kind: str, name: str, request: Request):
         path = root / kind / name
         if kind not in ingest.KINDS or not MEDIA_NAME.match(name) or not path.is_file():
             raise HTTPException(404)
-        return FileResponse(path, headers={"cache-control": "private, max-age=3600"})
+        # Revalidate every time: photos can change in place (colour repair). The ETag makes
+        # that cheap: an unchanged photo costs a 304 with no body.
+        cache = {"cache-control": "private, no-cache"}
+        response = FileResponse(path, headers=cache, stat_result=path.stat())
+        if request.headers.get("if-none-match") == response.headers["etag"]:
+            return Response(status_code=304, headers={"etag": response.headers["etag"], **cache})
+        return response
 
     if FRONTEND_DIST.is_dir():
         app.mount("/", StaticFiles(directory=FRONTEND_DIST, html=True), name="frontend")
