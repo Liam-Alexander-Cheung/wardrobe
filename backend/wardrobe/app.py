@@ -7,6 +7,8 @@ The web server: a small JSON API over the Store, plus the built React app.
     GET    /api/items/{id}
     PATCH  /api/items/{id}          change fields (see models.ItemUpdate)
     DELETE /api/items/{id}          removes the item and its three image files
+    GET    /api/outfits             saved outfits, newest first (POST to create)
+    GET/PUT/DELETE /api/outfits/{id}
     GET    /media/{kind}/{file}     the images, straight from the private data folder
 
 One photo per request on purpose: the browser uploads an AirDrop batch one by one and
@@ -26,7 +28,7 @@ from fastapi.staticfiles import StaticFiles
 from . import config, ingest
 from .db import Store, new_id
 from .guard import LocalOnly
-from .models import Category, Item, ItemUpdate, Season
+from .models import Category, Item, ItemUpdate, Outfit, OutfitIn, Season
 
 FRONTEND_DIST = config.REPO_ROOT / "frontend" / "dist"
 MEDIA_NAME = re.compile(r"^[0-9a-f]{12}\.(jpg|png|webp)$")
@@ -80,6 +82,45 @@ def create_app(data_dir: Optional[Path] = None, remover=None, demo: bool = False
         if not store.delete_item(item_id):
             raise HTTPException(404, "no such item")
         ingest.delete_files(item_id, root)
+        return Response(status_code=204)
+
+    # ---- outfits ------------------------------------------------------------------
+
+    def save_outfit(body: OutfitIn, outfit_id: Optional[str] = None) -> dict:
+        items = [i.model_dump() for i in body.items]
+        try:
+            if outfit_id is None:
+                return store.create_outfit(body.name, items, body.occasion, body.notes)
+            outfit = store.update_outfit(outfit_id, body.name, items, body.occasion, body.notes)
+        except Store.UnknownItem as e:
+            raise HTTPException(400, str(e))
+        if not outfit:
+            raise HTTPException(404, "no such outfit")
+        return outfit
+
+    @app.get("/api/outfits", response_model=list[Outfit])
+    def list_outfits():
+        return store.list_outfits()
+
+    @app.post("/api/outfits", response_model=Outfit, status_code=201)
+    def create_outfit(body: OutfitIn):
+        return save_outfit(body)
+
+    @app.get("/api/outfits/{outfit_id}", response_model=Outfit)
+    def get_outfit(outfit_id: str):
+        outfit = store.get_outfit(outfit_id)
+        if not outfit:
+            raise HTTPException(404, "no such outfit")
+        return outfit
+
+    @app.put("/api/outfits/{outfit_id}", response_model=Outfit)
+    def update_outfit(outfit_id: str, body: OutfitIn):
+        return save_outfit(body, outfit_id)
+
+    @app.delete("/api/outfits/{outfit_id}", status_code=204)
+    def delete_outfit(outfit_id: str):
+        if not store.delete_outfit(outfit_id):
+            raise HTTPException(404, "no such outfit")
         return Response(status_code=204)
 
     @app.get("/media/{kind}/{name}")
