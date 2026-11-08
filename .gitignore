@@ -1,0 +1,43 @@
+# ---- Privacy: your clothes never go into git ----
+# Real wardrobe data lives OUTSIDE this repo (default ~/WardrobeData, see README).
+# These rules are a second safety layer in case a data folder ends up in here anyway.
+WardrobeData/
+data/
+originals/
+cutouts/
+thumbs/
+uploads/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.jpg
+*.jpeg
+*.JPG
+*.JPEG
+*.heic
+*.HEIC
+*.png
+*.webp
+# allow-list: test fixtures and docs screenshots are generated, not real clothes
+!backend/tests/fixtures/*.png
+!docs/*.png
+
+# ---- Python ----
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# ---- Node ----
+node_modules/
+frontend/dist/
+.vite/
+
+# ---- OS / editors ----
+.DS_Store
+.env
+.idea/
+.vscode/
