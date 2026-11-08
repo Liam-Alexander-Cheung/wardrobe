@@ -77,3 +77,8 @@ class Item(BaseModel):
     created_at: str
     last_worn: Optional[str]
     images: dict[str, str]
+
+
+class AskIn(BaseModel):
+    message: str = Field(..., min_length=1, max_length=2000)
+    session_id: Optional[str] = Field(None, pattern=r"^[0-9a-f][0-9a-f-]{7,63}$")  # never a --flag
