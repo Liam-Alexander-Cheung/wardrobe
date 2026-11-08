@@ -3,11 +3,11 @@ import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 import App from "../App";
 import { api, type Item } from "../api";
-import { filterItems } from "../Closet";
+import { filterItems, swatch } from "../Closet";
 
 vi.mock("../api", async (orig) => {
   const real = await orig<typeof import("../api")>();
-  return { ...real, api: { listItems: vi.fn(), uploadItem: vi.fn(), updateItem: vi.fn(), deleteItem: vi.fn() } };
+  return { ...real, api: { health: vi.fn(), listItems: vi.fn(), uploadItem: vi.fn(), updateItem: vi.fn(), deleteItem: vi.fn() } };
 });
 const mocked = vi.mocked(api);
 
@@ -28,7 +28,26 @@ const fresh = item();
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocked.health.mockResolvedValue({ ok: true, items: 4, demo: false });
   mocked.listItems.mockResolvedValue([tee, knit, flare, fresh]);
+});
+
+describe("Demo mode", () => {
+  it("says so when the server runs the demo wardrobe", async () => {
+    mocked.health.mockResolvedValue({ ok: true, items: 4, demo: true });
+    render(<App />);
+    expect(await screen.findByText(/demo wardrobe/i)).toBeInTheDocument();
+  });
+  it("stays quiet for the real wardrobe", async () => {
+    render(<App />);
+    await screen.findByText("Red tee");
+    expect(screen.queryByText(/demo wardrobe/i)).not.toBeInTheDocument();
+  });
+});
+
+it("maps fashion colour words to swatches and passes CSS colours through", () => {
+  expect(swatch("Camel")).toBe("#c19a6b");
+  expect(swatch("navy")).toBe("navy");
 });
 
 describe("filterItems", () => {

@@ -72,6 +72,7 @@ const json = (method: string, body: unknown): RequestInit => ({
 });
 
 export const api = {
+  health: () => call<{ ok: boolean; items: number; demo: boolean }>("/api/health"),
   listItems: () => call<Item[]>("/api/items"),
   uploadItem: (file: File) => {
     const form = new FormData();

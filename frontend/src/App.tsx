@@ -14,6 +14,9 @@ export default function App() {
   const [askOpen, setAskOpen] = useState(false);
   const [version, setVersion] = useState(0);
   const [error, setError] = useState("");
+  const [demo, setDemo] = useState(false);
+
+  useEffect(() => { api.health?.().then((h) => setDemo(h.demo)).catch(() => {}); }, []);
 
   useEffect(() => {
     api.listItems().then(setItems).catch((e) => setError(String(e.message ?? e)));
@@ -33,6 +36,7 @@ export default function App() {
         </nav>
         <p className="count">{items.length} pieces</p>
       </header>
+      {demo && <p className="demo-note">Demo wardrobe: drawn garments in a temporary folder. Nothing you change is kept.</p>}
       {error && <p className="error">Couldn't reach the server: {error}</p>}
       {view === "closet"
         ? <Closet items={items} setItems={setItems} />
