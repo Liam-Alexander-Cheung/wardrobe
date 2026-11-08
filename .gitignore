@@ -41,3 +41,8 @@ frontend/dist/
 .env
 .idea/
 .vscode/
+
+# local preview config (machine-specific paths)
+.claude/launch.json
+*.egg-info/
+*.tsbuildinfo
