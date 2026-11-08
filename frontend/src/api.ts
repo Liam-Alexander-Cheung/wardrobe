@@ -30,6 +30,33 @@ export interface Outfit extends OutfitIn {
   items: (Placement & { name: string; images: Item["images"] })[];
 }
 
+export type AskEvent =
+  | { type: "init"; session_id: string }
+  | { type: "text"; text: string }
+  | { type: "status"; text: string }
+  | { type: "result"; session_id: string; is_error: boolean; turns: number }
+  | { type: "changed" }
+  | { type: "error"; text: string; fatal?: boolean };
+
+// POST + read the Server-Sent Events stream by hand (EventSource can only do GET).
+async function ask(message: string, sessionId: string | null, onEvent: (e: AskEvent) => void) {
+  const r = await fetch("/api/ask", json("POST", { message, session_id: sessionId }));
+  if (!r.ok || !r.body) {
+    const body = await r.json().catch(() => ({}));
+    throw new Error(typeof body.detail === "string" ? body.detail : `${r.status} ${r.statusText}`);
+  }
+  const reader = r.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buffer = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += value;
+    const frames = buffer.split("\n\n");
+    buffer = frames.pop() ?? "";
+    for (const f of frames) if (f.startsWith("data: ")) onEvent(JSON.parse(f.slice(6)));
+  }
+}
+
 async function call<T>(url: string, init?: RequestInit): Promise<T> {
   const r = await fetch(url, init);
   if (!r.ok) {
@@ -57,4 +84,5 @@ export const api = {
   createOutfit: (body: OutfitIn) => call<Outfit>("/api/outfits", json("POST", body)),
   updateOutfit: (id: string, body: OutfitIn) => call<Outfit>(`/api/outfits/${id}`, json("PUT", body)),
   deleteOutfit: (id: string) => call<void>(`/api/outfits/${id}`, { method: "DELETE" }),
+  ask,
 };

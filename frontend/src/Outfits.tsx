@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { api, CATEGORIES, type Category, type Item, type Outfit } from "./api";
 import Board, { HOME, type Piece } from "./Board";
 
-interface Props { items: Item[] }
+interface Props { items: Item[]; version?: number }
 
-export default function Outfits({ items }: Props) {
+export default function Outfits({ items, version = 0 }: Props) {
   const [outfits, setOutfits] = useState<Outfit[]>([]);
   const [pieces, setPieces] = useState<Piece[]>([]);
   const [editing, setEditing] = useState<string | null>(null);   // id of the loaded outfit
@@ -13,7 +13,7 @@ export default function Outfits({ items }: Props) {
   const [pick, setPick] = useState<Category | "all">("all");
   const [error, setError] = useState("");
 
-  useEffect(() => { api.listOutfits().then(setOutfits).catch((e) => setError(e.message)); }, []);
+  useEffect(() => { api.listOutfits().then(setOutfits).catch((e) => setError(e.message)); }, [version]);
 
   const tagged = items.filter((i) => i.category !== null);
   const untagged = items.length - tagged.length;

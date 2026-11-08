@@ -9,6 +9,7 @@ The web server: a small JSON API over the Store, plus the built React app.
     DELETE /api/items/{id}          removes the item and its three image files
     GET    /api/outfits             saved outfits, newest first (POST to create)
     GET/PUT/DELETE /api/outfits/{id}
+    POST   /api/ask                 {"message", "session_id"?} -> Claude's answer as SSE
     GET    /media/{kind}/{file}     the images, straight from the private data folder
 
 One photo per request on purpose: the browser uploads an AirDrop batch one by one and
@@ -17,24 +18,27 @@ shows progress, instead of one request that hangs for a minute while rembg works
 
 from __future__ import annotations
 
+import asyncio
+import json
 import re
 from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, File, HTTPException, Response, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import config, ingest
+from . import ask, config, ingest
 from .db import Store, new_id
 from .guard import LocalOnly
-from .models import Category, Item, ItemUpdate, Outfit, OutfitIn, Season
+from .models import AskIn, Category, Item, ItemUpdate, Outfit, OutfitIn, Season
 
 FRONTEND_DIST = config.REPO_ROOT / "frontend" / "dist"
 MEDIA_NAME = re.compile(r"^[0-9a-f]{12}\.(jpg|png|webp)$")
 
 
-def create_app(data_dir: Optional[Path] = None, remover=None, demo: bool = False) -> FastAPI:
+def create_app(data_dir: Optional[Path] = None, remover=None, demo: bool = False,
+               claude_bin: str = "claude") -> FastAPI:
     root = config.check_outside_repo(data_dir or config.data_dir())
     store = Store(root / "wardrobe.db")
     app = FastAPI(title="Wardrobe", docs_url=None, redoc_url=None)
@@ -122,6 +126,23 @@ def create_app(data_dir: Optional[Path] = None, remover=None, demo: bool = False
         if not store.delete_outfit(outfit_id):
             raise HTTPException(404, "no such outfit")
         return Response(status_code=204)
+
+    # ---- ask Claude ---------------------------------------------------------------
+
+    busy = asyncio.Lock()   # one Claude run at a time: it's one person's wardrobe and quota
+
+    @app.post("/api/ask")
+    async def ask_claude(body: AskIn):
+        if busy.locked():
+            raise HTTPException(409, "Claude is still answering the last message")
+
+        async def stream():
+            async with busy:
+                async for event in ask.run(body.message, body.session_id, root, claude_bin):
+                    yield f"data: {json.dumps(event)}\n\n"
+
+        return StreamingResponse(stream(), media_type="text/event-stream",
+                                 headers={"cache-control": "no-cache"})
 
     @app.get("/media/{kind}/{name}")
     def media(kind: str, name: str):
