@@ -32,6 +32,11 @@ beforeEach(() => {
   mocked.listItems.mockResolvedValue([tee, knit, flare, fresh]);
 });
 
+it("shows the app's name, GuardTheRobes, in the masthead", async () => {
+  render(<App />);
+  expect(await screen.findByRole("heading", { level: 1, name: "GuardTheRobes" })).toBeInTheDocument();
+});
+
 describe("Demo mode", () => {
   it("says so when the server runs the demo wardrobe", async () => {
     mocked.health.mockResolvedValue({ ok: true, items: 4, demo: true });

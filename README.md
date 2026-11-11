@@ -1,4 +1,6 @@
-# Wardrobe
+# GuardTheRobes
+
+**Website:** <https://guardtherobes.github.io>
 
 A local-first digital wardrobe. Photograph your clothes, and the app cuts each one out of
 its background. Then lay outfits out on a flat-lay board, or ask Claude to put them

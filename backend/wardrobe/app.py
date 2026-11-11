@@ -41,7 +41,7 @@ def create_app(data_dir: Optional[Path] = None, remover=None, demo: bool = False
                claude_bin: str = "claude") -> FastAPI:
     root = config.check_outside_repo(data_dir or config.data_dir())
     store = Store(root / "wardrobe.db")
-    app = FastAPI(title="Wardrobe", docs_url=None, redoc_url=None)
+    app = FastAPI(title="GuardTheRobes", docs_url=None, redoc_url=None)
     app.state.store, app.state.root = store, root
 
     def item_or_404(item_id: str) -> dict:
