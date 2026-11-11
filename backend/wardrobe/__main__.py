@@ -23,6 +23,6 @@ if __name__ == "__main__":
     else:
         root = config.data_dir()
         root.mkdir(parents=True, exist_ok=True)
-        print(f"Wardrobe data: {root}  (private, outside the repo)")
+        print(f"GuardTheRobes data: {root}  (private, outside the repo)")
     print(f"Open http://{config.HOST}:{config.PORT}")
     uvicorn.run(create_app(root, demo=is_demo), host=config.HOST, port=config.PORT, log_level="warning")

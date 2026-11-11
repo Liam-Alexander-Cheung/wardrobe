@@ -26,7 +26,7 @@ export default function App() {
   return (
     <div className={askOpen ? "shell with-ask" : "shell"}>
       <header className="masthead">
-        <h1>Wardrobe</h1>
+        <h1>GuardTheRobes</h1>
         <nav className="tabs" role="tablist">
           {(["closet", "outfits"] as View[]).map((v) => (
             <button key={v} role="tab" aria-selected={view === v} onClick={() => setView(v)}>

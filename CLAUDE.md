@@ -1,4 +1,4 @@
-# Wardrobe: notes for Claude
+# GuardTheRobes (repo: wardrobe): notes for Claude
 
 Local-first digital wardrobe. Public repo; the owner's clothes are private.
 
