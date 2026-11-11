@@ -54,7 +54,12 @@ class LocalOnly:
 
         async def send_with_headers(message):
             if message["type"] == "http.response.start":
-                message["headers"] = list(message.get("headers", [])) + SECURITY_HEADERS
+                headers = list(message.get("headers", [])) + SECURITY_HEADERS
+                # "no-cache" = keep a copy but ask before reusing it (a 304 when unchanged).
+                # Without it browsers kept an old index.html after a rebuild (2026-11-08).
+                if not any(name.lower() == b"cache-control" for name, _ in headers):
+                    headers.append((b"cache-control", b"no-cache"))
+                message["headers"] = headers
             await send(message)
 
         await self.app(scope, receive, send_with_headers)

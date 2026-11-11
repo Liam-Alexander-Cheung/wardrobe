@@ -72,3 +72,17 @@ def test_security_headers(raw):
     h = raw.get("/api/health").headers
     assert "frame-ancestors 'none'" in h["content-security-policy"]
     assert h["x-frame-options"] == "DENY"
+
+
+# --- caching: after an update or a photo repair the browser must not show stale files ---
+
+def test_responses_revalidate_by_default(raw):
+    assert raw.get("/api/health").headers["cache-control"] == "no-cache"
+
+
+def test_media_revalidates(client, upload):
+    thumb = upload()["images"]["thumb"]
+    r = client.get(thumb)
+    assert "no-cache" in r.headers["cache-control"]
+    etag = r.headers["etag"]
+    assert client.get(thumb, headers={"if-none-match": etag}).status_code == 304   # cheap recheck
